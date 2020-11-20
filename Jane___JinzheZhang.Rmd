@@ -1,0 +1,130 @@
+---
+title: "Jane Austen"
+author: 'Jinzhe Zhang '
+date: "2020/11/20"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+# This assignment I cooperate with my teammaate Jingwen Xu
+library(tidyverse)
+library(httr)
+library(tnum)
+library(magrittr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+tnum.authorize(ip="54.158.136.133") 
+```
+
+## Create tags
+
+The book Sense and Sensibility talks about marriage and love about a couple of sisters Elinor and Marianne, there are three main relationships running through the whole book: Elinor and Edward, Marianne and Willoughby, Marianne and Brandon. So I create tags with marriage and marry, and the names of three couples separately.
+```{r}
+tnum.tagByQuery("*sense* has*= REGEXP(\"marriage|marry\")",adds = ("ref:marriage"))
+tnum.tagByQuery("*sense* has*= REGEXP(\"Elinor|Edward\")",adds = ("ref:EE"))
+tnum.tagByQuery("*sense* has*= REGEXP(\"Marianne|Willoughby\")",adds = ("ref:MW"))
+tnum.tagByQuery("*sense* has*= REGEXP(\"Marianne|Brandon\")",adds = ("ref:MB"))
+```
+
+## Make plots
+
+Before making the plots, we create a function to turn all the chapters into a vector.
+
+```{r}
+getchapter <- function(query_t2){
+  n=length(query_t2)
+  chapterlist <- 1:n
+  for (i in 1:n) {
+    chapterlist[i]<-
+      as.character(substring(str_split(tnum.getAttrFromList(query_t2[i], "subject"), "[:/]")[[1]][4], 9))
+  }
+  return(chapterlist)
+}
+```
+
+### Marriage and Marry
+
+```{r}
+marry <- tnum.query("@ref:marriage",max = 120)
+marrydf <- tnum.objectsToDf(marry)
+ggplot()+geom_bar(mapping = aes(getchapter(marry)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of 'marry' and 'marriage'")
+```
+It's obvious that the frequency of marry and marriage in chapter 31-39 and chapter 49-50 is outstanding. And if we track the book *Sense and Sensibility*, we can see that the character's marriage crises mostly occur in chapter 31-39, and the couples get married in chapter 49-50
+
+### Elinor and Edward
+
+```{r}
+ee <- tnum.query("@ref:EE",max = 1000)
+eedf <- tnum.objectsToDf(ee)
+ggplot()+geom_bar(mapping = aes(getchapter(ee)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of Elinor and Edward")
+```
+
+From this bar plot, we can see that the frequency of Elinor and Edward is fairly uniformly distributed in all the chapter, because this couple are in love with each other from the beginning to the end.
+
+### Marianne and Willoughby
+
+```{r}
+mw <- tnum.query("@ref:MW",max = 1000)
+mwdf <- tnum.objectsToDf(mw)
+ggplot()+geom_bar(mapping = aes(getchapter(mw)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of 'Marianne' and 'Willoughby'")
+```
+
+From this plot, we can see that the appearance of both Marriane and Brandon is mainly in former 30 chapters in which they are in love. Although Willoughby married with others since chapter 30, he and Marriane still have an ups and downs of emotional relationship which matches the ups and downs in the latter part of the bar plot.
+
+### Marriane and Brandon
+
+```{r}
+mb <- tnum.query("@ref:MB",max = 1500)
+mbdf <- tnum.objectsToDf(mb)
+ggplot()+geom_bar(mapping = aes(getchapter(mb)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of 'Marianne' and 'Brandon'")
+```
+
+The appearance of Marriane and Brandon is concentrated on the later half of the book, especially after chapter 30. In the former chapters, Marriane is in love with Willoughby and Brandon is attracted by Elinor. But later, they begin to learn about each other and get married.
+
+## Couples with marriage
+
+Now I want to view where both names and marriage appear so that we can learn about the relationship progress of these couples.
+
+```{r}
+marryee <- tnum.query("@[ref:marriage,ref:EE]",max = 100)
+marryeedf <- tnum.objectsToDf(marryee)
+ggplot()+geom_bar(mapping = aes(getchapter(marryee)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of Elinor, Edward and marry")
+
+meegraph <- tnum.makePhraseGraphFromPathList(marryeedf$subject)
+tnum.plotGraph(meegraph)
+```
+Elinor expresses her understanding of Edward's decision to marry with Lucy in chapter 37. Chapter 41 is a turning point of the relationship progress between Elinor and Edward because Lucy abandons the marriage appointment with Edward in this chapter. And in chapter 49-50, the couple is reconciled and get married.
+
+```{r}
+marrymw <- tnum.query("@[ref:marriage,ref:MW]",max = 100)
+marrymwdf <- tnum.objectsToDf(marrymw)
+ggplot()+geom_bar(mapping = aes(getchapter(marrymw)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of Marianne, Willoughby and marry")
+
+mmwgraph <- tnum.makePhraseGraphFromPathList(marrymwdf$subject)
+tnum.plotGraph(mmwgraph)
+```
+
+The frequency of Marianne, Willoughby and marriage are the largest in chapter 30. It's reasonable because Marianne hear of the marriage of Willoughby and another girl in this chapter which is a turning point of Marianne's emotional life.
+
+```{r}
+marrymb <- tnum.query("@[ref:marriage,ref:MB]",max = 100)
+marrymbdf <- tnum.objectsToDf(marrymb)
+ggplot()+geom_bar(mapping = aes(getchapter(marrymb)),stat = "count")+
+  labs(x="Chapter",title = "Frequency of Marianne, Brandon and marry")
+
+mmbgraph <- tnum.makePhraseGraphFromPathList(marrymbdf$subject)
+tnum.plotGraph(mmbgraph)
+```
+Brandon steps into the emotional life of Marianne since chapter 33, which is just after Marianne was crossed in love in chapter 30. In chapter 50, Marianne accept the love of Brandon and get married with him.
